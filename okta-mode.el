@@ -30,7 +30,7 @@
 
 (defvar okta-mode-map
   (let ((map (make-sparse-keymap)))
-    ;; (define-key map "C-j" 'newline-and-indent)
+    (define-key map "C-j" 'newline-and-indent)
     map)
   "Keymap for `okta-mode'.")
 
@@ -48,9 +48,10 @@
       "ret" "let" "if" "elif" "else"
       "loop" "for" "while" "break"
       "type" "struct" "enum" "macro"
-      "inline" "derive" "packed" "path"))
+      "inline" "derive" "packed" "path")
+    "List of keywords for Okta.")
 
-(defconst okta-special-types
+(defconst okta-basic-types
   '("i8" "u8"
     "i16" "u16"
     "i32" "u32"
@@ -58,43 +59,77 @@
     "f32" "f32"
     "f64" "f64"
     "bool"
-    "c_voidptr"))
+    "c_voidptr")
+  "Basic types for Okta.")
 
-;; (defvar okta-builtin-functions
-;;   '("@sizeof"
-;;     "@bitcast"
-;;     "@cstr"
-;;     "@slice"
-;;     "@len"
-;;     "@inttoptr"
-;;     "@ptrtoint")
-;;   "List of the builtin Okta macros.")
+(defconst okta-bool-consts
+  '("true" "false")
+  "Boolean constants for Okta.")
 
-;; (defun okta-re-word (inner) (concat "\\<" inner "\\>"))
-;; (defun okta-re-grab (inner) (concat "\\(" inner "\\)"))
-;; (defun okta-re-shy (inner) (concat "\\(?:" inner "\\)"))
+(defconst okta-builtin-functions
+  '("sizeof"
+    "bitcast"
+    "cstr"
+    "slice"
+    "len"
+    "inttoptr"
+    "ptrtoint")
+  "List of the builtin Okta functions.")
+
+(defun okta-re-word (inner) (concat "\\<" inner "\\>"))
+(defun okta-re-symbol (inner) (concat "\\_<" inner "\\_>"))
+(defun okta-re-group (inner) (concat "\\(" inner "\\)"))
+(defun okta-re-shy (inner) (concat "\\(?:" inner "\\)"))
+
+(defconst okta-re-spc "[[:space:]\\n]+")
+(defconst okta-re-id "_*[[:alpha:]][[:alnum:]_]*")
 
 (defconst okta-highlights
   (append
-   `((,(regexp-opt okta-keywords 'symbols) . font-lock-keyword-face)
-     (,(regexp-opt okta-special-types 'symbols) . font-lock-type-face))))
+   `(
+     ;; Language keywords
+     (,(regexp-opt okta-keywords 'symbols) . font-lock-keyword-face)
 
-(defun okta-indent-line ()
-  "Indent current line of Okta code."
-  (interactive)
-  (beginning-of-line)
-  (if (bobp)
-      (indent-line-to 0)
-  (let ((savep (> (current-column) (current-indentation)))
-        (indent (condition-case nil (max (okta-calculate-indentation) 0)
-                  (error 0))))
-    (if savep
-        (save-excursion (indent-line-to indent))
-      (indent-line-to indent)))))
+     ;; Basic types (i32, f64...)
+     (,(regexp-opt okta-basic-types 'symbols) . font-lock-type-face)
 
-(defun okta-calculate-indentation ()
-  "Return the column to which the current line should be indented."
-  0)
+     ;; Builtin functions starting with `@'
+     (,(concat (okta-re-group "@")
+               (regexp-opt okta-builtin-functions t)
+               "\\_>")
+      (1 font-lock-type-face)
+      (2 font-lock-builtin-face))
+     ;; (,(concat "\\_<@" (regexp-opt okta-builtin-functions t) "\\_>")
+     ;;  1 font-lock-type-face)
+
+     ;; Constants and literals such as integers, floats and boolean values
+     (,(regexp-opt okta-bool-consts 'symbols) . font-lock-constant-face)
+     ("\\<[[:digit:]]+\\(\\.[[:digit:]]*\\)?\\>" . font-lock-constant-face)
+
+     ;; Function definitions
+     (,(concat "fun" okta-re-spc "\\([^(]+\\)(.*):") 1 font-lock-function-name-face)
+     (,(concat "type" okta-re-spc (okta-re-grab (okta-re-symbol okta-re-id)))
+      1 font-lock-type-face)
+
+     ;; ("_*[[:alpha:]][[:alnum:]_]*" . font-lock-variable-name-face)
+     )))
+
+;; (defun okta-indent-line ()
+;;   "Indent current line of Okta code."
+;;   (interactive)
+;;   (beginning-of-line)
+;;   (if (bobp)
+;;       (indent-line-to 0)
+;;   (let ((savep (> (current-column) (current-indentation)))
+;;         (indent (condition-case nil (max (okta-calculate-indentation) 0)
+;;                   (error 0))))
+;;     (if savep
+;;         (save-excursion (indent-line-to indent))
+;;       (indent-line-to indent)))))
+
+;; (defun okta-calculate-indentation ()
+;;   "Return the column to which the current line should be indented."
+;;   0)
 
 ;;;###autoload
 (define-derived-mode okta-mode prog-mode "Okta"
@@ -102,6 +137,7 @@
   :syntax-table okta-mode-syntax-table
   (setq-local comment-start "# ")
   (setq-local font-lock-defaults '(okta-highlights))
+  ;; (setq-local open-paren-in-column-0-is-defun-start nil)
   (setq-local electric-indent-chars
               (cons ?} (and (boundp 'electric-indent-chars)
                             electric-indent-chars))))
