@@ -108,9 +108,11 @@
 
      ;; Function definitions
      (,(concat "fun" okta-re-spc "\\([^(]+\\)(.*):") 1 font-lock-function-name-face)
-     (,(concat "type" okta-re-spc (okta-re-grab (okta-re-symbol okta-re-id)))
+     (,(concat "type" okta-re-spc (okta-re-group (okta-re-symbol okta-re-id)))
       1 font-lock-type-face)
 
+     ;; TODO: highlight struct and enum constructors
+     ;; TODO: highlight function calls (and struct members)
      ;; ("_*[[:alpha:]][[:alnum:]_]*" . font-lock-variable-name-face)
      )))
 
@@ -141,8 +143,6 @@
   (setq-local electric-indent-chars
               (cons ?} (and (boundp 'electric-indent-chars)
                             electric-indent-chars))))
-
-(add-to-list 'auto-mode-alist '("\\.ok\\'" . okta-mode))
 
 (provide 'okta-mode)
 
