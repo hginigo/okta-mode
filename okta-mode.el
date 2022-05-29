@@ -81,7 +81,8 @@
 (defun okta-re-group (inner) (concat "\\(" inner "\\)"))
 (defun okta-re-shy (inner) (concat "\\(?:" inner "\\)"))
 
-(defconst okta-re-spc "[[:space:]\\n]+")
+(defconst okta-re-single-spc "[[:space:]\t\n]")
+(defconst okta-re-spc (concat okta-re-single-spc "+"))
 (defconst okta-re-id "_*[[:alpha:]][[:alnum:]_]*")
 
 (defconst okta-highlights
@@ -107,9 +108,17 @@
      ("\\<[[:digit:]]+\\(\\.[[:digit:]]*\\)?\\>" . font-lock-constant-face)
 
      ;; Function definitions
-     (,(concat "fun" okta-re-spc "\\([^(]+\\)(.*):") 1 font-lock-function-name-face)
+     (,(concat "fun" okta-re-spc (okta-re-symbol (concat (okta-re-group okta-re-id)))
+                                         okta-re-single-spc "*"
+                                         "(.*)")
+               1 font-lock-function-name-face)
+
      (,(concat "type" okta-re-spc (okta-re-group (okta-re-symbol okta-re-id)))
       1 font-lock-type-face)
+
+     ;; Variable definitions
+     (,(concat "let" okta-re-spc (okta-re-group (okta-re-symbol okta-re-id)))
+      1 font-lock-variable-name-face)
 
      ;; TODO: highlight struct and enum constructors
      ;; TODO: highlight function calls (and struct members)
